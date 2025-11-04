@@ -1,31 +1,37 @@
-// FIX: Create content for App.tsx to serve as the main application component.
+
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { User, View } from './types';
+import { User } from './types';
 
-import Login from './components/views/Login';
+// Components
 import Header from './components/Header';
+import BottomNav from './components/BottomNav';
+import Login from './components/views/Login';
+
+// Views
 import Dashboard from './components/views/Dashboard';
 import Portfolio from './components/views/Portfolio';
 import Discover from './components/views/Discover';
 import Community from './components/views/Community';
-import AiAssistant from './components/AiAssistant';
-import BottomNav from './components/BottomNav';
+import StockDetail from './components/views/StockDetail';
+
+type View = 'dashboard' | 'portfolio' | 'discover' | 'community';
 
 const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentView, setCurrentView] = useState<View>('dashboard');
+    const [selectedStock, setSelectedStock] = useState<string | null>(null);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
             if (firebaseUser) {
                 setUser({
                     uid: firebaseUser.uid,
-                    name: firebaseUser.displayName,
-                    email: firebaseUser.email,
-                    photoURL: firebaseUser.photoURL,
+                    name: firebaseUser.displayName || 'No Name',
+                    email: firebaseUser.email || '',
+                    photoURL: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
                 });
             } else {
                 setUser(null);
@@ -36,17 +42,30 @@ const App: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
-    const renderView = () => {
+    const handleSelectStock = (symbol: string) => {
+        setSelectedStock(symbol);
+    };
+
+    const handleBack = () => {
+        setSelectedStock(null);
+    };
+
+    const renderContent = () => {
+        if (selectedStock) {
+            return <StockDetail symbol={selectedStock} onBack={handleBack} />;
+        }
+
         switch (currentView) {
+            case 'dashboard':
+                return <Dashboard onSelectStock={handleSelectStock} />;
             case 'portfolio':
                 return <Portfolio />;
             case 'discover':
-                return <Discover />;
+                return <Discover onSelectStock={handleSelectStock} />;
             case 'community':
                 return <Community />;
-            case 'dashboard':
             default:
-                return <Dashboard />;
+                return <Dashboard onSelectStock={handleSelectStock} />;
         }
     };
 
@@ -59,19 +78,12 @@ const App: React.FC = () => {
     }
 
     return (
-        <div className="bg-primary min-h-screen text-text-primary">
+        <div className="bg-primary min-h-screen text-text-primary font-sans">
             <Header user={user} />
-            <main className="p-4 md:p-8 max-w-7xl mx-auto pb-20 md:pb-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2">
-                        {renderView()}
-                    </div>
-                    <div className="hidden lg:block">
-                        <AiAssistant />
-                    </div>
-                </div>
+            <main className="p-4 md:p-8 mb-16 md:mb-0">
+                {renderContent()}
             </main>
-            <BottomNav currentView={currentView} setCurrentView={setCurrentView} />
+            <BottomNav currentView={currentView} setCurrentView={(v) => { setSelectedStock(null); setCurrentView(v); }} />
         </div>
     );
 };
